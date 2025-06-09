@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import clickSound from "./ClickSound.m4a";
 
 function Calculator({ workouts, allowSound }) {
@@ -6,15 +6,46 @@ function Calculator({ workouts, allowSound }) {
   const [sets, setSets] = useState(3);
   const [speed, setSpeed] = useState(90);
   const [durationBreak, setDurationBreak] = useState(5);
+  const [duration, setDuration] = useState(0);
+  // const duration = (number * sets * speed) / 60 + (sets - 1) * durationBreak;
 
-  const duration = (number * sets * speed) / 60 + (sets - 1) * durationBreak;
+  // wrapped in a useCallback to avoid re rendering this function twice when the handler functions are
+  // executed
+  // the bug is that when the toggleSound is clicked, it resets the duration and plays the sound,
+  // due to allowSound being a reactive value
+
+  // const playSound = useCallback(() => {
+  //   if (!allowSound) return;
+  //   const sound = new Audio(clickSound);
+  //   sound.play();
+  // }, [allowSound]);
+
+  // we need the useEffect hook to keep the duration in sync with the reactive values
+  useEffect(() => {
+    setDuration((number * sets * speed) / 60 + (sets - 1) * durationBreak);
+  }, [durationBreak, number, sets, speed]);
+
+  // playSound only plays when duration changes
+  // allowSound is also a dep, cos it is  reactive value
+  useEffect(() => {
+    const playSound = () => {
+      if (!allowSound) return;
+      const sound = new Audio(clickSound);
+      sound.play();
+    };
+
+    playSound();
+  }, [duration, allowSound]);
+
   const mins = Math.floor(duration);
   const seconds = (duration - mins) * 60;
 
-  const playSound = function () {
-    if (!allowSound) return;
-    const sound = new Audio(clickSound);
-    sound.play();
+  // remove playsound from both handler functions
+  const handleInc = () => {
+    setDuration((duration) => Math.trunc(duration) + 1);
+  };
+  const handleDec = () => {
+    setDuration((duration) => (duration > 1 ? Math.ceil(duration) - 1 : 0));
   };
 
   return (
@@ -66,13 +97,13 @@ function Calculator({ workouts, allowSound }) {
         </div>
       </form>
       <section>
-        <button onClick={() => {}}>–</button>
+        <button onClick={handleDec}>–</button>
         <p>
           {mins < 10 && "0"}
           {mins}:{seconds < 10 && "0"}
           {seconds}
         </p>
-        <button onClick={() => {}}>+</button>
+        <button onClick={handleInc}>+</button>
       </section>
     </>
   );
